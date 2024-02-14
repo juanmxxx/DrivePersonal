@@ -49,6 +49,7 @@ public class GestorFTP extends Thread {
     // Método privado para subir un fichero al servidor FTP
     private boolean subirFichero(String path) throws IOException {
         File ficheroLocal = new File(path);
+        System.out.println(ficheroLocal.getName());
         InputStream is = new FileInputStream(ficheroLocal);
         boolean enviado = clienteFTP.storeFile(ficheroLocal.getName(), is);
         is.close();
@@ -59,6 +60,7 @@ public class GestorFTP extends Thread {
     public void run() {
         try {
             conectar(); // Conectar al servidor FTP
+            System.out.println(filePath);
             if (subirFichero(filePath)) // Subir el fichero
                 System.out.println("Fichero subido correctamente");
             desconectar(); // Desconectar del servidor FTP

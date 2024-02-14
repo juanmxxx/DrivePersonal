@@ -1,5 +1,3 @@
-import org.apache.commons.net.ftp.FTPClient;
-
 import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -7,9 +5,10 @@ import java.util.Scanner;
 
 public class Client {
 
+    private static String carpetaCliente = "clientServer";
     // Método para crear una carpeta llamada "client" si no existe
     private static void crearCarpeta() throws InterruptedException {
-        String folderPath = "client";
+        String folderPath = carpetaCliente;
 
         // Crear un objeto File que representa la carpeta
         File folder = new File(folderPath);
@@ -37,7 +36,7 @@ public class Client {
         System.out.print("Introduce el nombre de la carpeta que quieres comprimir: ");
         nombreCarpeta = sc.nextLine();
         nombreCarpeta += "_" + fechaHoraActual(); // Agregar fecha y hora actual al nombre de la carpeta
-        String folderPath = "client\\" + nombreCarpeta;
+        String folderPath = carpetaCliente + "\\" + nombreCarpeta;
 
         // Crear un objeto File que representa la carpeta a comprimir
         File folder = new File(folderPath);
@@ -53,9 +52,9 @@ public class Client {
         }
 
         // Agregar "/" al nombre de la carpeta para formar una ruta de directorio válida
-        nombreCarpeta = "client/" + nombreCarpeta;
+        nombreCarpeta = carpetaCliente + "/" + nombreCarpeta;
         // Comprimir la carpeta utilizando el método compressDirectory()
-        compressDirectory(nombreCarpeta);
+        comprimirDirectorio(nombreCarpeta);
         // Agregar extensión ".zip" al nombre de la carpeta
         nombreCarpeta += ".zip";
 
@@ -80,7 +79,7 @@ public class Client {
      * ejecutar varios procesos a la misma vez para comprimir archivos
      * @param nombreCarpeta el directorio que se comprimira
      */
-    public static void compressDirectory(String nombreCarpeta) {
+    public static void comprimirDirectorio(String nombreCarpeta) {
         try {
             // Mostrar el nombre de la carpeta que se va a comprimir
             System.out.println("Este es el nombre de la carpeta ahora mismo: " + nombreCarpeta);
