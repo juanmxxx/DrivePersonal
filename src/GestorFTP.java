@@ -1,14 +1,12 @@
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPReply;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.SocketException;
 
-public class GestorFTP extends Thread{
+public class GestorFTP extends Thread {
     private FTPClient clienteFTP;
     private static final String SERVIDOR = "localhost";
     private static final int PUERTO = 21;
@@ -16,47 +14,56 @@ public class GestorFTP extends Thread{
     private static final String PASSWORD = "1234";
     private String filePath;
 
+    // Constructor que inicializa el cliente FTP y establece el path del fichero a subir
     public GestorFTP(String path) {
         clienteFTP = new FTPClient();
         this.filePath = path;
     }
-    private void conectar() throws SocketException, IOException {
+
+    // Método privado para conectar al servidor FTP
+    private void conectar() throws IOException {
         clienteFTP.connect(SERVIDOR, PUERTO);
         int respuesta = clienteFTP.getReplyCode();
 
-        if (!FTPReply.isPositiveCompletion(respuesta) ) {
+        // Verificar si la conexión fue exitosa
+        if (!FTPReply.isPositiveCompletion(respuesta)) {
             clienteFTP.disconnect();
             throw new IOException("Error al conectar con el servidor FTP");
         }
 
-        boolean credencialesOK=clienteFTP.login(USUARIO,PASSWORD);
-
+        // Verificar las credenciales de acceso
+        boolean credencialesOK = clienteFTP.login(USUARIO, PASSWORD);
         if (!credencialesOK) {
             throw new IOException("Error al conectar con el servidor FTP. Credenciales incorrectas.");
         }
 
+        // Establecer el tipo de transferencia de archivos (binario)
         clienteFTP.setFileType(FTP.BINARY_FILE_TYPE);
     }
 
-    private void desconectar () throws IOException {
+    // Método privado para desconectar del servidor FTP
+    private void desconectar() throws IOException {
         clienteFTP.disconnect();
     }
-    private boolean subirFichero (String path) throws IOException {
+
+    // Método privado para subir un fichero al servidor FTP
+    private boolean subirFichero(String path) throws IOException {
         File ficheroLocal = new File(path);
         InputStream is = new FileInputStream(ficheroLocal);
         boolean enviado = clienteFTP.storeFile(ficheroLocal.getName(), is);
         is.close();
-        return enviado;
+        return enviado; // Devuelve true si se ha subido correctamente
     }
 
+    // Sobrescribe el método run de la clase Thread para ejecutar la tarea de subir el fichero al servidor FTP
     public void run() {
         try {
-            conectar();
-            subirFichero(filePath);
-            desconectar();
+            conectar(); // Conectar al servidor FTP
+            if (subirFichero(filePath)) // Subir el fichero
+                System.out.println("Fichero subido correctamente");
+            desconectar(); // Desconectar del servidor FTP
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-
 }

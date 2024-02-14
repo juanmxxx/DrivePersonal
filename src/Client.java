@@ -1,85 +1,50 @@
-import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
-import org.apache.commons.net.ftp.FTPReply;
 
 import java.io.*;
-import java.net.SocketException;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Scanner;
-import java.util.zip.*;
 
 public class Client {
-    private FTPClient clienteFTP;
-    private static final String SERVIDOR = "localhost";
-    private static final int PUERTO = 21;
-    private static final String USUARIO = "Miguel";
-    private static final String PASSWORD = "1234";
 
-    private void conectar() throws SocketException, IOException {
-        clienteFTP.connect(SERVIDOR, PUERTO);
-        int respuesta = clienteFTP.getReplyCode();
-
-        if (!FTPReply.isPositiveCompletion(respuesta)) {
-            clienteFTP.disconnect();
-            throw new IOException("Error al conectar con el servidor FTP");
-        }
-
-        boolean credencialesOK = clienteFTP.login(USUARIO, PASSWORD);
-
-        if (!credencialesOK) {
-            throw new IOException("Error al conectar con el servidor FTP. Credenciales incorrectas.");
-        }
-
-        clienteFTP.setFileType(FTP.BINARY_FILE_TYPE);
-    }
-
-    private void desconectar() throws IOException {
-        clienteFTP.disconnect();
-    }
-
-    private boolean subirFichero(String path) throws IOException {
-        File ficheroLocal = new File(path);
-        InputStream is = new FileInputStream(ficheroLocal);
-        boolean enviado = clienteFTP.storeFile(ficheroLocal.getName(), is);
-        is.close();
-        return enviado;
-    }
-
-    private boolean descargarFichero(String ficheroRemoto, String pathLocal)
-            throws IOException {
-        OutputStream os = new BufferedOutputStream(new FileOutputStream(pathLocal));
-        boolean recibido = clienteFTP.retrieveFile(ficheroRemoto, os);
-        os.close();
-        return recibido;
-    }
-
+    // Método para crear una carpeta llamada "client" si no existe
     private static void crearCarpeta() throws InterruptedException {
         String folderPath = "client";
 
+        // Crear un objeto File que representa la carpeta
         File folder = new File(folderPath);
+
+        // Verificar si la carpeta no existe
         if (!folder.exists()) {
+            // Si la carpeta no existe, intenta crearla
             if (folder.mkdir()) {
                 System.out.println("Creando carpeta: " + folderPath + "...");
-                Thread.sleep(2000);
+                Thread.sleep(2000); // Esperar 2 segundos simulando un proceso
                 System.out.println("Carpeta creada");
             }
         }
     }
 
+    // Método principal
     public static void main(String[] args) throws InterruptedException {
         String nombreCarpeta;
         Scanner sc = new Scanner(System.in);
+
+        // Llamar al método para crear la carpeta "client" si no existe
         crearCarpeta();
 
+        // Solicitar al usuario que introduzca el nombre de la carpeta a comprimir
         System.out.print("Introduce el nombre de la carpeta que quieres comprimir: ");
         nombreCarpeta = sc.nextLine();
-        nombreCarpeta += "_" + fechaHoraActual();
+        nombreCarpeta += "_" + fechaHoraActual(); // Agregar fecha y hora actual al nombre de la carpeta
         String folderPath = "client\\" + nombreCarpeta;
 
+        // Crear un objeto File que representa la carpeta a comprimir
         File folder = new File(folderPath);
+
+        // Verificar si la carpeta no existe
         if (!folder.exists()) {
+            // Si la carpeta no existe, intenta crearla
             if (folder.mkdir()) {
                 System.out.println("Carpeta creada");
             } else {
@@ -87,49 +52,56 @@ public class Client {
             }
         }
 
-        try {
-            FileOutputStream fos = new FileOutputStream("client\\" + nombreCarpeta + ".zip");
-            ZipOutputStream zipOut = new ZipOutputStream(fos);
+        // Agregar "/" al nombre de la carpeta para formar una ruta de directorio válida
+        nombreCarpeta = "client/" + nombreCarpeta;
+        // Comprimir la carpeta utilizando el método compressDirectory()
+        compressDirectory(nombreCarpeta);
+        // Agregar extensión ".zip" al nombre de la carpeta
+        nombreCarpeta += ".zip";
 
-            zipFolder(folder, folder.getName(), zipOut);
+        // Subir el fichero comprimido al servidor FTP envolviendo el código en un hilo
+        new GestorFTP(nombreCarpeta).start();
 
-            zipOut.close();
-            fos.close();
-
-            System.out.println("Carpeta comprimida");
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
-
-    private static void zipFolder(File folder, String parentFolder, ZipOutputStream zos) {
-        try {
-            for (File file : folder.listFiles()) {
-                if (file.isDirectory()) {
-                    zipFolder(file, parentFolder, zos);
-                    continue;
-                }
-                zos.putNextEntry(new ZipEntry(parentFolder + "/" + file.getName()));
-                FileInputStream fis = new FileInputStream(file);
-                byte[] buffer = new byte[1024];
-                int length;
-                while ((length = fis.read(buffer)) > 0) {
-                    zos.write(buffer, 0, length);
-                }
-                zos.closeEntry();
-                fis.close();
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
+    // Método para obtener la fecha y hora actual formateada como "dd.MM.yyyy_HH-mm-ss"
     public static String fechaHoraActual() {
         LocalDateTime fechaHoraActual = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy_HH-mm-ss");
         // Formatear la fecha y hora actual según el formato
         return fechaHoraActual.format(formatter);
+    }
+
+    // Método para comprimir una carpeta usando 7zip
+
+    /**
+     * Este metodo en lo que consiste es en comprimir una carpeta usando 7zip pero utilizando
+     * un proceso para ello para asi llegar a poder aprovechar lo que es la programacion concurrente y que se puedan
+     * ejecutar varios procesos a la misma vez para comprimir archivos
+     * @param nombreCarpeta el directorio que se comprimira
+     */
+    public static void compressDirectory(String nombreCarpeta) {
+        try {
+            // Mostrar el nombre de la carpeta que se va a comprimir
+            System.out.println("Este es el nombre de la carpeta ahora mismo: " + nombreCarpeta);
+            // Comando para comprimir la carpeta usando 7zip
+            String command = "7z a -tzip " + nombreCarpeta + ".zip " + nombreCarpeta;
+
+            // Crear el proceso
+            Process process = new ProcessBuilder("cmd.exe", "/C", command).start();
+
+            // Esperar a que el proceso termine
+            process.waitFor();
+
+            // Verificar el resultado del proceso
+            int exitCode = process.exitValue();
+            if (exitCode == 0) {
+                System.out.println("Directorio comprimido exitosamente.");
+            } else {
+                System.out.println("Error al comprimir el directorio. Código de salida: " + exitCode);
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
