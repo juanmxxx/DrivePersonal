@@ -54,9 +54,9 @@ public class Client {
         // Agregar "/" al nombre de la carpeta para formar una ruta de directorio válida
         nombreCarpeta = carpetaCliente + "/" + nombreCarpeta;
         // Comprimir la carpeta utilizando el método compressDirectory()
-        comprimirDirectorio(nombreCarpeta);
+        //comprimirDirectorio(nombreCarpeta);
         // Agregar extensión ".zip" al nombre de la carpeta
-        nombreCarpeta += ".zip";
+        //nombreCarpeta += ".zip";
 
         // Subir el fichero comprimido al servidor FTP envolviendo el código en un hilo
         new GestorFTP(nombreCarpeta).start();

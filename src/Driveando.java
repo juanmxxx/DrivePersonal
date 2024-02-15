@@ -1,5 +1,6 @@
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
+import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
 
 import java.io.File;
@@ -10,20 +11,21 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class SyncronizedClient extends Thread{
-    //private static FTPClient clienteFTP;
+public class Driveando extends Thread{
+    private static FTPClient clienteFTP;
     private static final String SERVIDOR = "localhost";
     private static final int PUERTO = 21;
     private static final String USUARIO = "Miguel";
     private static final String PASSWORD = "1234";
-    private static String remotePath =  "C:/Users/juanm/OneDrive - UNIVERSIDAD DE GRANADA/DAM/2º/Programacion servicios y procesos/tema4/clientServer";
+    private static final String remotePath = "C:/Users/juanm/OneDrive - UNIVERSIDAD DE GRANADA/DAM/2º/Programacion servicios y procesos/tema4/clientServer/";
+    private static final String optionalPath = "C:/Users/juanm/";
     private static String filePath;
 
-    public SyncronizedClient(String path) {
+    public Driveando(String path) {
+        clienteFTP = new FTPClient();
         filePath = path;
     }
 
-/*
     private static void conectar() throws IOException {
         clienteFTP.connect(SERVIDOR, PUERTO);
         int respuesta = clienteFTP.getReplyCode();
@@ -44,16 +46,12 @@ public class SyncronizedClient extends Thread{
         clienteFTP.setFileType(FTP.BINARY_FILE_TYPE);
     }
 
- */
-/*
     private static void desconectar() throws IOException {
         clienteFTP.disconnect();
     }
 
- */
 
-
-    private boolean subirFichero(FTPClient clienteFTP, String path) throws IOException, InterruptedException {
+    private boolean subirFichero(String path) throws IOException, InterruptedException {
         File ficheroLocal = new File(path);
 
         System.out.println(ficheroLocal.getName());
@@ -63,18 +61,12 @@ public class SyncronizedClient extends Thread{
         return enviado; // Devuelve true si se ha subido correctamente
     }
 
-    private List<String> ficherosRemotos(FTPClient clienteFTP) throws IOException {
+    private List<String> ficherosRemotos() throws IOException {
 
         List<String> ficheros = new ArrayList<>();
-        clienteFTP.changeWorkingDirectory(remotePath);
 
         //conectar();
         String[] nombres = clienteFTP.listNames();
-        File ficheroComparacion = new File(nombres[0]);
-        String rutaAb= ficheroComparacion.getAbsolutePath();
-        String rutaCan= ficheroComparacion.getCanonicalPath();
-        System.out.println("ab  "+rutaAb);
-        System.out.println("aC  "+rutaCan);
         if (nombres != null) {
             ficheros.addAll(Arrays.asList(nombres));
         }
@@ -97,25 +89,23 @@ public class SyncronizedClient extends Thread{
 
     private void sincronizar(){
         try {
-            FTPClient clienteFTP= new FTPClient();
-            clienteFTP.connect(SERVIDOR,PUERTO);
-            clienteFTP.login(USUARIO,PASSWORD);
-
+            conectar();
             List<String> ficherosLocales = ficherosLocal();
-            List<String> ficherosRemotos = ficherosRemotos(clienteFTP);
+            List<String> ficherosRemotos = ficherosRemotos();
 
             for(String archivoRemoto: ficherosRemotos){
                 if(!ficherosLocales.contains(archivoRemoto)){
-                    borrarArchivo(clienteFTP, archivoRemoto);
+                    eliminarDirectorioYContenido(archivoRemoto);
                 }
             }
 
             for (String ficheroLocal : ficherosLocales) {
                 if (!ficherosRemotos.contains(ficheroLocal)) {
-                    subirCarpeta(clienteFTP, new File(filePath), ficheroLocal);
+                    subirCarpeta(new File(filePath), ficheroLocal);
                 }
             }
 
+            desconectar();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -137,7 +127,19 @@ public class SyncronizedClient extends Thread{
     }
 
 
-    private void subirCarpeta(FTPClient clienteFTP, File carpetaLocal, String rutaRemota) throws IOException {
+    private void updateFiles() throws IOException {
+        List<String> ficherosLocales = ficherosLocal();
+        List<String> ficherosRemotos = ficherosRemotos();
+
+        for (String ficheroLocal : ficherosLocales) {
+            if (!ficherosRemotos.contains(ficheroLocal)) {
+                subirCarpeta(new File(filePath), ficheroLocal);
+            }
+        }
+
+    }
+
+    private void subirCarpeta(File carpetaLocal, String rutaRemota) throws IOException {
         // Crear el directorio remoto
         boolean directorioCreado = clienteFTP.makeDirectory(rutaRemota);
         if (!directorioCreado) {
@@ -156,7 +158,7 @@ public class SyncronizedClient extends Thread{
             String rutaRemotaArchivo = rutaRemota + "/" + archivo.getName();
             if (archivo.isDirectory()) {
                 // Si es un subdirectorio, llamar a este método recursivamente
-                subirCarpeta(clienteFTP, archivo, rutaRemotaArchivo);
+                subirCarpeta(archivo, rutaRemotaArchivo);
             } else {
                 // Si es un archivo, subirlo al servidor FTP
                 try (InputStream is = new FileInputStream(archivo)) {
@@ -169,18 +171,28 @@ public class SyncronizedClient extends Thread{
         }
     }
 
-    private static void borrarArchivo(FTPClient clienteFTP, String archivo) throws IOException {
-        File ficheroCompracion= new File(archivo);
-        String rutaAb= ficheroCompracion.getAbsolutePath();
-        String rutaCan= ficheroCompracion.getCanonicalPath();
+    // Este método se encarga de eliminar un directorio y su contenido.
+    private static void eliminarDirectorioYContenido(String directorio) throws IOException {
+        // Primero, obtenemos una lista de todos los archivos y subdirectorios en el directorio que queremos eliminar.
+        FTPFile[] files = clienteFTP.listFiles(directorio);
 
-        System.out.println("ab  "+rutaAb);
-        System.out.println("aC  "+rutaCan);
-        boolean archivoBorrado = clienteFTP.deleteFile(archivo);
+        // Luego, recorremos cada archivo y subdirectorio.
+        for (FTPFile file : files) {
+            // Construimos la ruta completa del archivo o subdirectorio.
+            String path = directorio + "/" + file.getName();
+            // Si es un subdirectorio, llamamos a este método recursivamente.
+            if (file.isDirectory()) {
+                eliminarDirectorioYContenido(path);
+            } else {
+                // Si es un archivo, lo eliminamos.
+                clienteFTP.deleteFile(path);
+            }
+        }
 
-
-        if (!archivoBorrado) {
-            throw new IOException("No se pudo borrar el archivo: " + archivo);
+        // Finalmente, intentamos eliminar el directorio. Si no podemos eliminarlo, imprimimos un mensaje de error.
+        boolean directoryRemoved = clienteFTP.removeDirectory(directorio);
+        if (!directoryRemoved) {
+            System.out.println("No se pudo eliminar el directorio: " + directorio);
         }
     }
 

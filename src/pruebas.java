@@ -1,5 +1,6 @@
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
+import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
 
 import java.io.File;
@@ -41,30 +42,31 @@ public class pruebas {
         clienteFTP.disconnect();
     }
     public static void main(String[] args) throws IOException {
-        listarFicherosRemotos();
-    }
-
-    private static void listarFicherosRemotos() throws IOException {
-
-        List<String> ficheros = new ArrayList<>();
-        conectar();
-        String[] nombres = clienteFTP.listNames();
-
-        if (nombres != null) {
-            ficheros.addAll(Arrays.asList(nombres));
-        }
-
-        for (String fichero : ficheros) {
-            System.out.println(fichero);
-        }
-        desconectar();
-    }
-
-    private static void listarFicherosLocal() throws IOException {
-        File directorio = new File("clientServer");
-        File[] ficheros = directorio.listFiles();
-        for (File fichero : ficheros) {
-            System.out.println(fichero.getName());
+        try {
+            conectar();
+            eliminarDirectorioYContenido("hola");
+            desconectar();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
+
+    private static void eliminarDirectorioYContenido(String directorio) throws IOException {
+        FTPFile[] files = clienteFTP.listFiles(directorio);
+
+        for (FTPFile file : files) {
+            String path = directorio + "/" + file.getName();
+            if (file.isDirectory()) {
+                eliminarDirectorioYContenido(path);
+            } else {
+                clienteFTP.deleteFile(path);
+            }
+        }
+
+        boolean directoryRemoved = clienteFTP.removeDirectory(directorio);
+        if (!directoryRemoved) {
+            System.out.println("No se pudo eliminar el directorio: " + directorio);
+        }
+    }
+
 }
