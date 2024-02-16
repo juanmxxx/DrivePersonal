@@ -1,3 +1,5 @@
+package ejercicioA;
+
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPReply;
@@ -22,6 +24,7 @@ public class GestorFTP extends Thread {
 
     // Método privado para conectar al servidor FTP
     private void conectar() throws IOException {
+        // Conectar al servidor FTP, puerto 21m, con un timeout de 10 segundos
         clienteFTP.connect(SERVIDOR, PUERTO);
         int respuesta = clienteFTP.getReplyCode();
 
@@ -31,7 +34,7 @@ public class GestorFTP extends Thread {
             throw new IOException("Error al conectar con el servidor FTP");
         }
 
-        // Verificar las credenciales de acceso
+        // Verificar las credenciales de acceso, si no son correctas, lanzar una excepción
         boolean credencialesOK = clienteFTP.login(USUARIO, PASSWORD);
         if (!credencialesOK) {
             throw new IOException("Error al conectar con el servidor FTP. Credenciales incorrectas.");
@@ -50,6 +53,7 @@ public class GestorFTP extends Thread {
     private boolean subirFichero(String path) throws IOException {
         File ficheroLocal = new File(path);
         System.out.println(ficheroLocal.getName());
+
         InputStream is = new FileInputStream(ficheroLocal);
         boolean enviado = clienteFTP.storeFile(ficheroLocal.getName(), is);
         is.close();
@@ -61,8 +65,10 @@ public class GestorFTP extends Thread {
         try {
             conectar(); // Conectar al servidor FTP
             System.out.println(filePath);
+
             if (subirFichero(filePath)) // Subir el fichero
                 System.out.println("Fichero subido correctamente");
+
             desconectar(); // Desconectar del servidor FTP
         } catch (IOException e) {
             e.printStackTrace();

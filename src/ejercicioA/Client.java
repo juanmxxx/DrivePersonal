@@ -1,3 +1,5 @@
+package ejercicioA;
+
 import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -5,7 +7,7 @@ import java.util.Scanner;
 
 public class Client {
 
-    private static String carpetaCliente = "clientServer";
+    private static String carpetaCliente = "local";
     // Método para crear una carpeta llamada "client" si no existe
     private static void crearCarpeta() throws InterruptedException {
         String folderPath = carpetaCliente;
@@ -28,22 +30,21 @@ public class Client {
     public static void main(String[] args) throws InterruptedException {
         String nombreCarpeta;
         Scanner sc = new Scanner(System.in);
-
         // Llamar al método para crear la carpeta "client" si no existe
         crearCarpeta();
+
+
 
         // Solicitar al usuario que introduzca el nombre de la carpeta a comprimir
         System.out.print("Introduce el nombre de la carpeta que quieres comprimir: ");
         nombreCarpeta = sc.nextLine();
-        nombreCarpeta += "_" + fechaHoraActual(); // Agregar fecha y hora actual al nombre de la carpeta
+         // Agregar fecha y hora actual al nombre de la carpeta
         String folderPath = carpetaCliente + "\\" + nombreCarpeta;
 
         // Crear un objeto File que representa la carpeta a comprimir
         File folder = new File(folderPath);
 
-        // Verificar si la carpeta no existe
         if (!folder.exists()) {
-            // Si la carpeta no existe, intenta crearla
             if (folder.mkdir()) {
                 System.out.println("Carpeta creada");
             } else {
@@ -51,17 +52,23 @@ public class Client {
             }
         }
 
-        // Agregar "/" al nombre de la carpeta para formar una ruta de directorio válida
+        //Cogemos la ruta relativa y comprimimos la carpeta, seria: nombreCarpeta.zip
         nombreCarpeta = carpetaCliente + "/" + nombreCarpeta;
-        // Comprimir la carpeta utilizando el método compressDirectory()
-        //comprimirDirectorio(nombreCarpeta);
-        // Agregar extensión ".zip" al nombre de la carpeta
-        //nombreCarpeta += ".zip";
+        comprimirDirectorio(nombreCarpeta);
+        //Aqui le añadimos la hora y la fecha
+        String nombreCarpetaComprimida = nombreCarpeta + "_" + fechaHoraActual() + ".zip";
+        new File(nombreCarpeta + ".zip").renameTo(new File(nombreCarpetaComprimida));
+        //Le cambiamos el nombre
+        nombreCarpeta = nombreCarpetaComprimida;
 
         // Subir el fichero comprimido al servidor FTP envolviendo el código en un hilo
         new GestorFTP(nombreCarpeta).start();
 
     }
+
+
+
+
 
     // Método para obtener la fecha y hora actual formateada como "dd.MM.yyyy_HH-mm-ss"
     public static String fechaHoraActual() {
